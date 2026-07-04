@@ -18,6 +18,7 @@ export const updateDocumentSchema = z.object({
     .min(2, ERROR_MESSAGES.TITLE_MIN_LENGTH)
     .max(100, ERROR_MESSAGES.TITLE_MAX_LENGTH)
     .optional(),
+  // Content is HTML from TipTap editor — no length restriction at schema level
   content: z.string().optional(),
 });
 
