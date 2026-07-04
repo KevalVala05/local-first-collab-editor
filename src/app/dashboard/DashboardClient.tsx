@@ -12,6 +12,8 @@ import {
   useDeleteDocumentMutation,
   useShareDocumentMutation,
 } from "@/hooks/useDocumentMutations";
+import { localDb, getCachedDocuments } from "@/lib/localDb";
+import { useSync, type SyncStatus } from "@/context/SyncContext";
 
 interface Collaborator {
   userId: {
@@ -50,6 +52,7 @@ export default function DashboardClient({ session }: DashboardClientProps)
 {
   const router = useRouter();
   const currentUserId = session.user?.id;
+  const { syncStatus, isOnline } = useSync();
 
   // Pagination & Filtering state
   const [q, setQ] = useState("");
@@ -70,17 +73,60 @@ export default function DashboardClient({ session }: DashboardClientProps)
   const [shareRole, setShareRole] = useState<DocumentRole.EDITOR | DocumentRole.VIEWER>(DocumentRole.EDITOR);
   const [openDropdownId, setOpenDropdownId] = useState<string | null>(null);
 
+
+
   // Fetch Documents
-  const { data, isLoading } = useQuery({
-    queryKey: ["documents", { q, sortBy, order, page }],
-    queryFn: async () =>
+  const { data, isLoading } = useQuery(
     {
-      const response = await api.get("/documents", {
-        params: { q, sortBy, order, page, limit },
-      });
-      return response.data.data;
-    },
-  });
+      queryKey: ["documents", { q, sortBy, order, page, isOnline }],
+      queryFn: async () =>
+      {
+        if (isOnline)
+        {
+          try
+          {
+            const response = await api.get(
+              "/documents",
+              {
+                params: { q, sortBy, order, page, limit },
+              }
+            );
+            const serverData = response.data.data;
+
+            // Cache server documents locally in Dexie
+            if (serverData?.documents)
+            {
+              for (const doc of serverData.documents)
+              {
+                await localDb.documents.put(
+                  {
+                    _id: doc._id,
+                    title: doc.title,
+                    content: doc.content || "",
+                    ownerId: doc.ownerId,
+                    collaborators: doc.collaborators || [],
+                    updatedAt: doc.updatedAt,
+                    createdAt: doc.createdAt,
+                    syncStatus: "synced",
+                  }
+                );
+              }
+            }
+
+            return serverData;
+          }
+          catch (err)
+          {
+            console.warn("Failed to fetch documents from server, returning local cache.", err);
+          }
+        }
+
+        // Offline or server fetch failed: return cached local documents
+        const cached = await getCachedDocuments(q, sortBy, order, page, limit);
+        return cached;
+      },
+    }
+  );
 
   const documents: DocumentData[] = data?.documents || [];
   const pagination = data?.pagination || { page: 1, limit: 6, total: 0, pages: 1 };
@@ -191,6 +237,44 @@ export default function DashboardClient({ session }: DashboardClientProps)
           </span>
         </div>
         <div className="flex items-center gap-4">
+          <div
+            className={
+              `flex items-center gap-2 px-3 py-1 rounded-xl border text-xs font-semibold ${
+                syncStatus === "online"
+                  ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400"
+                  : syncStatus === "offline"
+                  ? "bg-amber-500/10 border-amber-500/20 text-amber-400"
+                  : syncStatus === "syncing"
+                  ? "bg-blue-500/10 border-blue-500/20 text-blue-400"
+                  : "bg-red-500/10 border-red-500/20 text-red-400"
+              }`
+            }
+          >
+            <span
+              className={
+                `w-2 h-2 rounded-full ${
+                  syncStatus === "online"
+                    ? "bg-emerald-400"
+                    : syncStatus === "offline"
+                    ? "bg-amber-400 animate-pulse"
+                    : syncStatus === "syncing"
+                    ? "bg-blue-400 animate-ping"
+                    : "bg-red-500"
+                }`
+              }
+            />
+            <span>
+              {
+                syncStatus === "online"
+                  ? "Online"
+                  : syncStatus === "offline"
+                  ? "Offline"
+                  : syncStatus === "syncing"
+                  ? "Syncing..."
+                  : "Sync Error"
+              }
+            </span>
+          </div>
           <UserMenu user={session.user || {}} />
         </div>
       </header>
@@ -360,6 +444,28 @@ export default function DashboardClient({ session }: DashboardClientProps)
               const isOwner = doc.ownerId?._id === currentUserId;
               const ownerName = doc.ownerId?.name || "Unknown";
 
+              const syncStatus = (doc as any).syncStatus || "synced";
+              const isLocalOnly = (doc as any).isLocalOnly || doc._id.startsWith("local_");
+
+              let badgeText = "Synced";
+              let badgeClass = "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";
+
+              if (isLocalOnly)
+              {
+                badgeText = "Local-Only";
+                badgeClass = "text-indigo-400 bg-indigo-500/10 border-indigo-500/20";
+              }
+              else if (syncStatus === "pending")
+              {
+                badgeText = "Sync Pending";
+                badgeClass = "text-amber-400 bg-amber-500/10 border-amber-500/20";
+              }
+              else if (syncStatus === "error")
+              {
+                badgeText = "Sync Error";
+                badgeClass = "text-red-400 bg-red-500/10 border-red-500/20";
+              }
+
               return (
                 <div
                   key={doc._id}
@@ -404,7 +510,7 @@ export default function DashboardClient({ session }: DashboardClientProps)
                               setActiveModal({ type: "share", doc });
                               setOpenDropdownId(null);
                             }}
-                            className="w-full text-left px-3 py-2 text-xs font-medium text-zinc-300 hover:bg-zinc-800/80 hover:text-white rounded-lg transition-colors flex items-center gap-2"
+                            className="w-full text-left px-3 py-2 text-xs font-medium text-zinc-300 hover:bg-zinc-850/80 hover:text-white rounded-lg transition-colors flex items-center gap-2"
                           >
                             <svg className="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M8.684 10.742l3.528-3.528A1 1 0 0012 6.5H5.5A2.5 2.5 0 003 9v8.5A2.5 2.5 0 005.5 20h8.5a2.5 2.5 0 002.5-2.5V11.5a1 1 0 00-.742-.968l-3.528-3.528" />
@@ -446,8 +552,8 @@ export default function DashboardClient({ session }: DashboardClientProps)
                     <span>
                       Updated {new Date(doc.updatedAt).toLocaleDateString()}
                     </span>
-                    <span className="px-2 py-0.5 rounded-md bg-zinc-800 text-[10px] text-zinc-400 uppercase tracking-wider font-semibold">
-                      Cloud
+                    <span className={`px-2 py-0.5 rounded-md border text-[10px] uppercase tracking-wider font-semibold ${badgeClass}`}>
+                      {badgeText}
                     </span>
                   </div>
                 </div>

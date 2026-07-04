@@ -8,6 +8,7 @@ import { StatusCodes } from "http-status-codes";
 import { DocumentRole } from "@/types/document";
 import { updateDocumentSchema } from "@/validation/document";
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from "@/constants/messages";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 // Helper function to find a document and verify user's role/permission
 async function getDocumentWithPermission(docId: string, userId: string)
@@ -46,6 +47,30 @@ async function getDocumentWithPermission(docId: string, userId: string)
   return { doc, role };
 }
 
+// GET /api/documents/[id] - Fetch a single document by ID
+export const GET = withErrorHandler(
+  async (req: Request, { params }: { params: Promise<{ id: string }> }) =>
+  {
+    const { id } = await params;
+    const session = await getServerSession(authOptions);
+    if (!session?.user?.id)
+    {
+      throw new ApiError(ERROR_MESSAGES.UNAUTHORIZED, StatusCodes.UNAUTHORIZED);
+    }
+
+    checkRateLimit(session.user.id);
+
+    const { doc } = await getDocumentWithPermission(id, session.user.id);
+
+    // Fetch and populate details for returning to client
+    const populatedDoc = await Document.findById(doc._id)
+      .populate("ownerId", "name email")
+      .populate("collaborators.userId", "name email");
+
+    return sendSuccessResponse(populatedDoc, null, SUCCESS_MESSAGES.DOCUMENT_RETRIEVE_SUCCESS);
+  }
+);
+
 // PATCH /api/documents/[id] - Update document title/content
 export const PATCH = withErrorHandler(
   async (req: Request, { params }: { params: Promise<{ id: string }> }) =>
@@ -57,12 +82,20 @@ export const PATCH = withErrorHandler(
       throw new ApiError(ERROR_MESSAGES.UNAUTHORIZED, StatusCodes.UNAUTHORIZED);
     }
 
+    checkRateLimit(session.user.id);
+
     const { doc, role } = await getDocumentWithPermission(id, session.user.id);
 
     // Viewers cannot push updates
     if (role === DocumentRole.VIEWER)
     {
       throw new ApiError(ERROR_MESSAGES.VIEWER_CANNOT_EDIT, StatusCodes.FORBIDDEN);
+    }
+
+    const contentLength = req.headers.get("content-length");
+    if (contentLength && parseInt(contentLength, 10) > 1 * 1024 * 1024)
+    {
+      throw new ApiError("Payload too large. Maximum allowed size is 1MB.", StatusCodes.REQUEST_TOO_LONG);
     }
 
     const body = await req.json();

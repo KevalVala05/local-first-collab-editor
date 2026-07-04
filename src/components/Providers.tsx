@@ -4,6 +4,7 @@ import React, { useState } from "react";
 import { SessionProvider } from "next-auth/react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ToastContainer } from "react-toastify";
+import { SyncProvider } from "@/context/SyncContext";
 import "react-toastify/dist/ReactToastify.css";
 
 interface Props
@@ -13,33 +14,40 @@ interface Props
 
 export default function Providers({ children }: Props)
 {
-  const [queryClient] = useState(() => new QueryClient(
+  const [queryClient] = useState(
+    () =>
     {
-      defaultOptions: {
-        queries: {
-          refetchOnWindowFocus: false,
-          retry: false,
-        },
-      },
+      return new QueryClient(
+        {
+          defaultOptions: {
+            queries: {
+              refetchOnWindowFocus: false,
+              retry: false,
+            },
+          },
+        }
+      );
     }
-  ));
+  );
 
   return (
     <SessionProvider>
       <QueryClientProvider client={queryClient}>
-        {children}
-        <ToastContainer
-          position="bottom-right"
-          autoClose={3000}
-          hideProgressBar={false}
-          newestOnTop={false}
-          closeOnClick
-          rtl={false}
-          pauseOnFocusLoss
-          draggable
-          pauseOnHover
-          theme="dark"
-        />
+        <SyncProvider>
+          {children}
+          <ToastContainer
+            position="bottom-right"
+            autoClose={3000}
+            hideProgressBar={false}
+            newestOnTop={false}
+            closeOnClick
+            rtl={false}
+            pauseOnFocusLoss
+            draggable
+            pauseOnHover
+            theme="dark"
+          />
+        </SyncProvider>
       </QueryClientProvider>
     </SessionProvider>
   );

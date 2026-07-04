@@ -8,6 +8,7 @@ import { StatusCodes } from "http-status-codes";
 import { createDocumentSchema } from "@/validation/document";
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from "@/constants/messages";
 import { DocumentRole } from "@/types/document";
+import { checkRateLimit } from "@/lib/rateLimit";
 
 // GET /api/documents - Fetch list of accessible documents
 export const GET = withErrorHandler(async (req: Request) =>
@@ -17,6 +18,8 @@ export const GET = withErrorHandler(async (req: Request) =>
   {
     throw new ApiError(ERROR_MESSAGES.UNAUTHORIZED, StatusCodes.UNAUTHORIZED);
   }
+
+  checkRateLimit(session.user.id);
 
   await dbConnect();
 
@@ -74,6 +77,14 @@ export const POST = withErrorHandler(async (req: Request) =>
   if (!session?.user?.id)
   {
     throw new ApiError(ERROR_MESSAGES.UNAUTHORIZED, StatusCodes.UNAUTHORIZED);
+  }
+
+  checkRateLimit(session.user.id);
+
+  const contentLength = req.headers.get("content-length");
+  if (contentLength && parseInt(contentLength, 10) > 1 * 1024 * 1024)
+  {
+    throw new ApiError("Payload too large. Maximum allowed size is 1MB.", StatusCodes.REQUEST_TOO_LONG);
   }
 
   await dbConnect();
