@@ -2,6 +2,8 @@
 
 import React, { useState, useRef, useEffect } from "react";
 import { signOut } from "next-auth/react";
+import { useRouter } from "next/navigation";
+import { toastSuccess } from "@/lib/toast";
 
 interface Props
 {
@@ -13,8 +15,16 @@ interface Props
 
 export default function UserMenu({ user }: Props)
 {
+  const router = useRouter();
   const [isOpen, setIsOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
+
+  const handleLogout = async () =>
+  {
+    await signOut({ redirect: false });
+    toastSuccess("Signed out successfully!");
+    router.push("/login");
+  };
 
   // Close when clicking outside
   useEffect(() =>
@@ -93,7 +103,7 @@ export default function UserMenu({ user }: Props)
           {/* Action Button */}
           <button
             id="user-menu-logout-btn"
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={handleLogout}
             className="w-full text-left px-4 py-2.5 text-sm font-medium text-red-400 hover:bg-red-500/10 active:bg-red-500/20 rounded-xl transition-all cursor-pointer flex items-center gap-2"
           >
             <svg

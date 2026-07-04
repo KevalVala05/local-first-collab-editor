@@ -9,7 +9,7 @@ import { useMutation } from "@tanstack/react-query";
 import { registerSchema } from "@/validation/auth";
 import { registerUser } from "@/services/authService";
 import { z } from "zod";
-import { toast } from "react-toastify";
+import { toastSuccess, toastError } from "@/lib/toast";
 
 type RegisterInput = z.infer<typeof registerSchema>;
 
@@ -33,12 +33,13 @@ export default function RegisterPage()
       mutationFn: registerUser,
       onSuccess: () =>
       {
-        toast.success("Account created successfully! Please sign in.");
-        router.push("/login?registered=true");
+        toastSuccess("Account created successfully! Please sign in.");
+        router.push("/login");
       },
-      onError: (err: any) =>
+      onError: (err: unknown) =>
       {
-        toast.error(err.message || "An unexpected error occurred");
+        const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
+        toastError(errorMessage);
       },
     }
   );

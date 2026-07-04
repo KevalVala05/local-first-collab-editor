@@ -1,7 +1,7 @@
 "use client";
 
-import React, { useState, useEffect, Suspense } from "react";
-import { useRouter, useSearchParams } from "next/navigation";
+import React, { useState, Suspense } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -9,15 +9,13 @@ import { useMutation } from "@tanstack/react-query";
 import { signIn } from "next-auth/react";
 import { loginSchema } from "@/validation/auth";
 import { z } from "zod";
-import { toast } from "react-toastify";
+import { toastSuccess, toastError } from "@/lib/toast";
 
 type LoginInput = z.infer<typeof loginSchema>;
 
 function LoginForm()
 {
   const router = useRouter();
-  const searchParams = useSearchParams();
-  const isRegistered = searchParams?.get("registered") === "true";
   const [showPassword, setShowPassword] = useState(false);
 
   const {
@@ -29,14 +27,6 @@ function LoginForm()
       resolver: zodResolver(loginSchema),
     }
   );
-
-  useEffect(() =>
-  {
-    if (isRegistered)
-    {
-      toast.success("Account created successfully! Please sign in.");
-    }
-  }, [isRegistered]);
 
   const { mutate, isPending } = useMutation(
     {
@@ -59,13 +49,14 @@ function LoginForm()
       },
       onSuccess: () =>
       {
-        toast.success("Signed in successfully!");
+        toastSuccess("Signed in successfully!");
         router.push("/dashboard");
         router.refresh();
       },
-      onError: (err: any) =>
+      onError: (err: unknown) =>
       {
-        toast.error(err.message || "Invalid credentials");
+        const errorMessage = err instanceof Error ? err.message : "Invalid credentials";
+        toastError(errorMessage);
       },
     }
   );
@@ -155,7 +146,7 @@ function LoginForm()
 
         <div className="mt-8 text-center border-t border-zinc-800/80 pt-6">
           <p className="text-zinc-400 text-sm">
-            Don't have an account?{" "}
+            {"Don't"} have an account?{" "}
             <Link
               id="goto-register-link"
               href="/register"
