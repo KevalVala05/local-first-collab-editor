@@ -1,8 +1,0 @@
-[phases.install]
-cmds = ["npm install ws yjs y-protocols lib0 --legacy-peer-deps"]
-
-[phases.build]
-cmds = ["echo 'Skipping build step'"]
-
-[start]
-cmd = "node ws-server.mjs"
