@@ -431,7 +431,7 @@ export default function TiptapEditor({
         {/* Active collaborators avatars */}
         {activeUsers.length > 0 && (
           <div className="flex items-center gap-1 ml-2">
-            <span className="text-[10px] text-zinc-600 mr-1">Also here:</span>
+            <span className="text-[10px] font-bold text-white mr-1">Also here:</span>
             <div className="flex -space-x-1">
               {activeUsers.slice(0, 5).map((u) => (
                 <div
