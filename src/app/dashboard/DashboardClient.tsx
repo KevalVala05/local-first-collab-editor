@@ -14,6 +14,7 @@ import {
 } from "@/hooks/useDocumentMutations";
 import { localDb, getCachedDocuments } from "@/lib/localDb";
 import { useSync, type SyncStatus } from "@/context/SyncContext";
+import Footer from "@/components/Footer";
 
 interface Collaborator {
   userId: {
@@ -766,6 +767,9 @@ export default function DashboardClient({ session }: DashboardClientProps)
           </div>
         </div>
       )}
+
+      {/* ── Author Footer ── */}
+      <Footer className="mt-10 pb-8" />
     </div>
   );
 }

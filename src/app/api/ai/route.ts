@@ -5,6 +5,7 @@ import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { NextResponse } from "next/server";
 import { StatusCodes } from "http-status-codes";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { ERROR_MESSAGES } from "@/constants/messages";
 
 export const maxDuration = 30; // 30 seconds max duration
 
@@ -16,7 +17,7 @@ export async function POST(req: Request)
     if (!session?.user?.id)
     {
       return NextResponse.json(
-        { message: "Unauthorized" },
+        { message: ERROR_MESSAGES.UNAUTHORIZED },
         { status: StatusCodes.UNAUTHORIZED }
       );
     }
@@ -29,7 +30,7 @@ export async function POST(req: Request)
     if (!action)
     {
       return NextResponse.json(
-        { message: "Missing action parameter" },
+        { message: ERROR_MESSAGES.AI_ACTION_REQUIRED },
         { status: StatusCodes.BAD_REQUEST }
       );
     }
@@ -37,7 +38,7 @@ export async function POST(req: Request)
     if (!process.env.GEMINI_API_KEY)
     {
       return NextResponse.json(
-        { message: "Gemini API key is not configured on the server. Please add GEMINI_API_KEY in your .env file." },
+        { message: ERROR_MESSAGES.GEMINI_KEY_MISSING },
         { status: StatusCodes.INTERNAL_SERVER_ERROR }
       );
     }
@@ -59,7 +60,7 @@ export async function POST(req: Request)
         if (!targetLanguage)
         {
           return NextResponse.json(
-            { message: "Missing targetLanguage parameter" },
+            { message: ERROR_MESSAGES.AI_LANGUAGE_REQUIRED },
             { status: StatusCodes.BAD_REQUEST }
           );
         }
@@ -69,7 +70,7 @@ export async function POST(req: Request)
         if (!targetTone)
         {
           return NextResponse.json(
-            { message: "Missing targetTone parameter" },
+            { message: ERROR_MESSAGES.AI_TONE_REQUIRED },
             { status: StatusCodes.BAD_REQUEST }
           );
         }
@@ -80,7 +81,7 @@ export async function POST(req: Request)
         break;
       default:
         return NextResponse.json(
-          { message: `Invalid action: ${action}` },
+          { message: `${ERROR_MESSAGES.AI_INVALID_ACTION}: ${action}` },
           { status: StatusCodes.BAD_REQUEST }
         );
     }
@@ -165,7 +166,7 @@ export async function POST(req: Request)
   {
     console.error("AI Assistant Error:", error);
     return NextResponse.json(
-      { message: error.message || "Failed to call AI assistant" },
+      { message: error.message || ERROR_MESSAGES.AI_FAILED },
       { status: StatusCodes.INTERNAL_SERVER_ERROR }
     );
   }
