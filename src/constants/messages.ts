@@ -31,6 +31,17 @@ export const ERROR_MESSAGES = {
   PASSWORD_MIN_LENGTH: "Password must be at least 6 characters",
   PASSWORD_MAX_LENGTH: "Password must not exceed 100 characters",
   ROLE_INVALID: "Role must be either EDITOR or VIEWER",
+
+  // AI & Snapshot messages
+  AI_ACTION_REQUIRED: "Missing action parameter",
+  GEMINI_KEY_MISSING: "Gemini API key is not configured on the server. Please add GEMINI_API_KEY in your .env file.",
+  AI_LANGUAGE_REQUIRED: "Missing targetLanguage parameter",
+  AI_TONE_REQUIRED: "Missing targetTone parameter",
+  AI_INVALID_ACTION: "Invalid action",
+  AI_FAILED: "Failed to call AI assistant",
+  VIEWER_CANNOT_SNAPSHOT: "Viewers cannot create snapshots",
+  VIEWER_CANNOT_RESTORE: "Viewers cannot restore snapshots",
+  SNAPSHOT_NOT_FOUND: "Snapshot not found",
 };
 
 export const SUCCESS_MESSAGES = {
@@ -43,4 +54,9 @@ export const SUCCESS_MESSAGES = {
   DOCUMENT_UPDATE_SUCCESS: "Document updated successfully",
   DOCUMENT_DELETE_SUCCESS: "Document deleted successfully",
   DOCUMENT_SHARE_SUCCESS: "Document shared successfully",
+
+  // Snapshot messages
+  SNAPSHOT_RETRIEVE_SUCCESS: "Snapshots retrieved successfully",
+  SNAPSHOT_CREATE_SUCCESS: "Snapshot created successfully",
+  DOCUMENT_RESTORE_SUCCESS: "Document restored successfully",
 };

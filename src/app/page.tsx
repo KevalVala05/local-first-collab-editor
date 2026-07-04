@@ -2,6 +2,7 @@ import React from "react";
 import Link from "next/link";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
+import Footer from "@/components/Footer";
 
 export default async function Home()
 {
@@ -59,9 +60,7 @@ export default async function Home()
         </div>
       </main>
 
-      <footer className="absolute bottom-6 text-zinc-650 text-xs tracking-wider uppercase font-medium">
-        House of EdTech Assignment v2.1
-      </footer>
+      <Footer className="absolute bottom-6" />
     </div>
   );
 }

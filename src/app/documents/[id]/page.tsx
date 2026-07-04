@@ -12,6 +12,7 @@ import api from "@/lib/api";
 import { useQuery } from "@tanstack/react-query";
 import { useSync } from "@/context/SyncContext";
 import { toastSuccess, toastError } from "@/lib/toast";
+import Footer from "@/components/Footer";
 
 // ── Types & Interfaces ──────────────────────────────────────────────────────
 
@@ -741,6 +742,9 @@ export default function DocumentPage()
           </div>
         </div>
       )}
+
+      {/* ── Author Footer ── */}
+      <Footer className="mt-6 pb-6" />
     </div>
   );
 }

@@ -9,6 +9,7 @@ import { StatusCodes } from "http-status-codes";
 import { DocumentRole } from "@/types/document";
 import zlib from "zlib";
 import { checkRateLimit } from "@/lib/rateLimit";
+import { ERROR_MESSAGES, SUCCESS_MESSAGES } from "@/constants/messages";
 
 // Helper function to find a document and verify user's role/permission
 async function getDocumentWithPermission(docId: string, userId: string)
@@ -18,7 +19,7 @@ async function getDocumentWithPermission(docId: string, userId: string)
   const doc = await Document.findById(docId);
   if (!doc)
   {
-    throw new ApiError("Document not found", StatusCodes.NOT_FOUND);
+    throw new ApiError(ERROR_MESSAGES.DOCUMENT_NOT_FOUND, StatusCodes.NOT_FOUND);
   }
 
   let role: DocumentRole | null = null;
@@ -40,7 +41,7 @@ async function getDocumentWithPermission(docId: string, userId: string)
 
   if (!role)
   {
-    throw new ApiError("Access denied", StatusCodes.FORBIDDEN);
+    throw new ApiError(ERROR_MESSAGES.DOCUMENT_ACCESS_DENIED, StatusCodes.FORBIDDEN);
   }
 
   return { doc, role };
@@ -54,7 +55,7 @@ export const POST = withErrorHandler(
     const session = await getServerSession(authOptions);
     if (!session?.user?.id)
     {
-      throw new ApiError("Unauthorized", StatusCodes.UNAUTHORIZED);
+      throw new ApiError(ERROR_MESSAGES.UNAUTHORIZED, StatusCodes.UNAUTHORIZED);
     }
 
     checkRateLimit(session.user.id);
@@ -63,13 +64,13 @@ export const POST = withErrorHandler(
 
     if (role === DocumentRole.VIEWER)
     {
-      throw new ApiError("Viewers cannot restore snapshots", StatusCodes.FORBIDDEN);
+      throw new ApiError(ERROR_MESSAGES.VIEWER_CANNOT_RESTORE, StatusCodes.FORBIDDEN);
     }
 
     const snapshot = await Snapshot.findById(snapshotId);
     if (!snapshot || snapshot.documentId.toString() !== id)
     {
-      throw new ApiError("Snapshot not found", StatusCodes.NOT_FOUND);
+      throw new ApiError(ERROR_MESSAGES.SNAPSHOT_NOT_FOUND, StatusCodes.NOT_FOUND);
     }
 
     // Decompress snapshot content
@@ -107,7 +108,7 @@ export const POST = withErrorHandler(
         currentVersion: doc.currentVersion,
       },
       null,
-      "Document restored successfully"
+      SUCCESS_MESSAGES.DOCUMENT_RESTORE_SUCCESS
     );
   }
 );

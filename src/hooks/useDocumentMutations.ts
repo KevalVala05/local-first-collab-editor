@@ -2,7 +2,7 @@ import { useMutation, useQueryClient } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { toastSuccess, toastError } from "@/lib/toast";
-import { SUCCESS_MESSAGES } from "@/constants/messages";
+import { ERROR_MESSAGES, SUCCESS_MESSAGES } from "@/constants/messages";
 import { useSession } from "next-auth/react";
 import {
   createDocumentLocally,
@@ -72,7 +72,7 @@ export function useCreateDocumentMutation()
         // Offline or server creation failed
         if (!session?.user?.id)
         {
-          throw new Error("User must be logged in to create a document.");
+          throw new Error(ERROR_MESSAGES.UNAUTHORIZED);
         }
 
         const localDoc = await createDocumentLocally(
