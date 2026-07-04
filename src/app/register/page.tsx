@@ -1,21 +1,21 @@
 "use client";
 
 import React, { useState } from "react";
-import { useRouter } from "next/navigation";
+
 import Link from "next/link";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { useMutation } from "@tanstack/react-query";
+import { useRegisterUserMutation } from "@/hooks/useAuthMutations";
 import { registerSchema } from "@/validation/auth";
 import { registerUser } from "@/services/authService";
 import { z } from "zod";
-import { toastSuccess, toastError } from "@/lib/toast";
+
 
 type RegisterInput = z.infer<typeof registerSchema>;
 
 export default function RegisterPage()
 {
-  const router = useRouter();
+  
   const [showPassword, setShowPassword] = useState(false);
 
   const {
@@ -28,21 +28,7 @@ export default function RegisterPage()
     }
   );
 
-  const { mutate, isPending } = useMutation(
-    {
-      mutationFn: registerUser,
-      onSuccess: () =>
-      {
-        toastSuccess("Account created successfully! Please sign in.");
-        router.push("/login");
-      },
-      onError: (err: unknown) =>
-      {
-        const errorMessage = err instanceof Error ? err.message : "An unexpected error occurred";
-        toastError(errorMessage);
-      },
-    }
-  );
+  const { mutate, isPending } = useRegisterUserMutation();
 
   const onSubmit = (data: RegisterInput) =>
   {

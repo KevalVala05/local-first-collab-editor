@@ -1,4 +1,5 @@
 import mongoose, { Schema } from "mongoose";
+import { DocumentRole } from "@/types/document";
 
 const CollaboratorSchema = new Schema(
   {
@@ -9,7 +10,7 @@ const CollaboratorSchema = new Schema(
     },
     role: {
       type: String,
-      enum: ["OWNER", "EDITOR", "VIEWER"],
+      enum: Object.values(DocumentRole),
       required: true,
     },
   },
@@ -23,6 +24,8 @@ const DocumentSchema = new Schema(
     title: {
       type: String,
       required: true,
+      minlength: 2,
+      maxlength: 100,
       default: "Untitled Document",
     },
     content: {
