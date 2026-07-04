@@ -19,6 +19,7 @@ import { WebsocketProvider } from "y-websocket";
 import api from "@/lib/api";
 import { toastError } from "@/lib/toast";
 import { DocumentRole } from "@/types/document";
+import { saveDocumentLocally, localDb } from "@/lib/localDb";
 
 // ── Types & Interfaces ──────────────────────────────────────────────────────
 
@@ -110,19 +111,48 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
 
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ── Save to backend (debounced) ────────────────────────────────────────────
   const saveContent = useCallback(
     async (content: string) => {
       setSaveStatus("saving");
       try {
-        await api.patch(`/documents/${documentId}`, { content });
+        // 1. Always save to local IndexedDB (which also handles queuing in the outbox)
+        await saveDocumentLocally(documentId, content);
+
+        // 2. If online, try to patch immediately on the server
+        if (typeof window !== "undefined" && navigator.onLine) {
+          await api.patch(`/documents/${documentId}`, { content });
+          
+          // Mark as synced locally
+          const localDoc = await localDb.documents.get(documentId);
+          if (localDoc) {
+            localDoc.syncStatus = "synced";
+            await localDb.documents.put(localDoc);
+          }
+
+          // Remove the update_content action from the outbox since it was successfully sent
+          const outboxItem = await localDb.outbox
+            .where("documentId")
+            .equals(documentId)
+            .and((item) => item.action === "update_content")
+            .first();
+          if (outboxItem?.id !== undefined) {
+            await localDb.outbox.delete(outboxItem.id);
+          }
+        }
         setSaveStatus("saved");
         setTimeout(() => setSaveStatus("idle"), 2000);
       }
       catch (err) {
-        setSaveStatus("error");
-        const message = err instanceof Error ? err.message : "Failed to save";
-        toastError(message);
+        // If it's a network error, silently treat it as saved (it is saved locally in IndexedDB and queued in the outbox)
+        const isNetworkError = err && typeof err === "object" && !("response" in err);
+        if (isNetworkError) {
+          setSaveStatus("saved");
+          setTimeout(() => setSaveStatus("idle"), 2000);
+        } else {
+          setSaveStatus("error");
+          const message = err instanceof Error ? err.message : "Failed to save";
+          toastError(message);
+        }
       }
     },
     [documentId]
@@ -156,7 +186,8 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
     extensions: [
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
-      }),
+        history: false,
+      } as any),
       Placeholder.configure({
         placeholder: isReadOnly
           ? "This document is view-only."
@@ -168,6 +199,7 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
       }),
     ],
     editable: !isReadOnly,
+    immediatelyRender: false,
     editorProps: {
       attributes: {
         class:
@@ -287,8 +319,11 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
   useEffect(() => {
     if (!editor || contentSeeded) return;
 
+    let timeoutId: ReturnType<typeof setTimeout> | null = null;
+
     const handleSync = (synced: boolean) => {
       if (!synced || contentSeeded) return;
+      if (timeoutId) clearTimeout(timeoutId);
 
       // If the Yjs doc is empty, load content from MongoDB
       const fragment = ydoc.getXmlFragment("default");
@@ -299,12 +334,35 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
       setWordCount(editor.storage.characterCount?.words() ?? 0);
     };
 
+    const seedOffline = () => {
+      if (contentSeeded) return;
+      const fragment = ydoc.getXmlFragment("default");
+      if (fragment.length === 0 && initialContent) {
+        editor.commands.setContent(initialContent);
+      }
+      setContentSeeded(true);
+      if (editor) {
+        setWordCount(editor.storage.characterCount?.words() ?? 0);
+      }
+    };
+
     // y-websocket v3 uses 'sync' event (also emits 'synced' for backwards compat)
     provider.on("sync", handleSync);
+    
     // If already synced when this effect runs
-    if (provider.synced) handleSync(true);
+    if (provider.synced) {
+      handleSync(true);
+    } else {
+      // If offline, seed immediately. If online, set a 1.5s timeout to seed as fallback.
+      const isOnline = typeof window !== "undefined" && navigator.onLine;
+      const delay = isOnline ? 1500 : 0;
+      timeoutId = setTimeout(seedOffline, delay);
+    }
 
-    return () => provider.off("sync", handleSync);
+    return () => {
+      provider.off("sync", handleSync);
+      if (timeoutId) clearTimeout(timeoutId);
+    };
   }, [editor, provider, ydoc, initialContent, contentSeeded]);
 
   // ── Connection status tracking ─────────────────────────────────────────────

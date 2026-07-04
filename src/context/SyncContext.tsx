@@ -186,7 +186,7 @@ export function SyncProvider({ children }: { children: React.ReactNode })
           console.error(`Sync error on outbox item ${item.id}`, err);
 
           // Network errors should pause sync loop
-          const isNetworkError = !err.response;
+          const isNetworkError = !err.status && !err.response;
           if (isNetworkError)
           {
             setSyncStatus("error");
