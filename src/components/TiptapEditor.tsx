@@ -6,6 +6,8 @@ import React, {
   useRef,
   useState,
   useMemo,
+  forwardRef,
+  useImperativeHandle,
 } from "react";
 import { useEditor, EditorContent } from "@tiptap/react";
 import StarterKit from "@tiptap/starter-kit";
@@ -55,17 +57,26 @@ function getPresenceColor(clientId: number): string {
   return PRESENCE_COLORS[clientId % PRESENCE_COLORS.length];
 }
 
+export interface TiptapEditorRef
+{
+  setContent: (content: string) => void;
+}
+
 // ── Component ───────────────────────────────────────────────────────────────
 
-export default function TiptapEditor({
-  documentId,
-  initialContent,
-  userRole,
-  userName,
-  userEmail,
-}: TiptapEditorProps)
-{
-  const isReadOnly = userRole === DocumentRole.VIEWER;
+const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
+  (
+    {
+      documentId,
+      initialContent,
+      userRole,
+      userName,
+      userEmail,
+    },
+    ref
+  ) =>
+  {
+    const isReadOnly = userRole === DocumentRole.VIEWER;
 
   // ── Yjs setup ─────────────────────────────────────────────────────────────
   const ydoc = useMemo(() => new Y.Doc(), []);
@@ -92,17 +103,14 @@ export default function TiptapEditor({
 
   // ── Save to backend (debounced) ────────────────────────────────────────────
   const saveContent = useCallback(
-    async (content: string) =>
-    {
+    async (content: string) => {
       setSaveStatus("saving");
-      try
-      {
+      try {
         await api.patch(`/documents/${documentId}`, { content });
         setSaveStatus("saved");
         setTimeout(() => setSaveStatus("idle"), 2000);
       }
-      catch (err)
-      {
+      catch (err) {
         setSaveStatus("error");
         const message = err instanceof Error ? err.message : "Failed to save";
         toastError(message);
@@ -134,8 +142,7 @@ export default function TiptapEditor({
           "prose prose-invert prose-sm sm:prose-base max-w-none min-h-[500px] focus:outline-none px-2 py-2 text-zinc-100 leading-relaxed",
       },
     },
-    onUpdate: ({ editor }) =>
-    {
+    onUpdate: ({ editor }) => {
       if (isReadOnly) return;
       const html = editor.getHTML();
       setWordCount(editor.storage.characterCount?.words() ?? 0);
@@ -148,19 +155,33 @@ export default function TiptapEditor({
     },
   });
 
+  useImperativeHandle(
+    ref,
+    () =>
+    {
+      return {
+        setContent: (html: string) =>
+        {
+          if (editor)
+          {
+            editor.commands.setContent(html);
+          }
+        },
+      };
+    },
+    [editor]
+  );
+
   // ── Seed initial content after Yjs syncs ──────────────────────────────────
-  useEffect(() =>
-  {
+  useEffect(() => {
     if (!editor || contentSeeded) return;
 
-    const handleSync = (synced: boolean) =>
-    {
+    const handleSync = (synced: boolean) => {
       if (!synced || contentSeeded) return;
 
       // If the Yjs doc is empty, load content from MongoDB
       const fragment = ydoc.getXmlFragment("default");
-      if (fragment.length === 0 && initialContent)
-      {
+      if (fragment.length === 0 && initialContent) {
         editor.commands.setContent(initialContent);
       }
       setContentSeeded(true);
@@ -176,10 +197,8 @@ export default function TiptapEditor({
   }, [editor, provider, ydoc, initialContent, contentSeeded]);
 
   // ── Connection status tracking ─────────────────────────────────────────────
-  useEffect(() =>
-  {
-    const handleStatus = ({ status }: { status: string }) =>
-    {
+  useEffect(() => {
+    const handleStatus = ({ status }: { status: string }) => {
       if (status === "connected") setConnectionStatus("connected");
       else if (status === "disconnected") setConnectionStatus("disconnected");
       else setConnectionStatus("connecting");
@@ -190,8 +209,7 @@ export default function TiptapEditor({
   }, [provider]);
 
   // ── Awareness / presence tracking ─────────────────────────────────────────
-  useEffect(() =>
-  {
+  useEffect(() => {
     // Set our own presence data
     provider.awareness.setLocalStateField("user", {
       name: userName,
@@ -199,16 +217,13 @@ export default function TiptapEditor({
       color: getPresenceColor(ydoc.clientID),
     });
 
-    const updatePresence = () =>
-    {
+    const updatePresence = () => {
       const states = provider.awareness.getStates();
       const users: Array<{ name: string; color: string; clientId: number }> =
         [];
 
-      states.forEach((state, clientId) =>
-      {
-        if (state.user && clientId !== ydoc.clientID)
-        {
+      states.forEach((state, clientId) => {
+        if (state.user && clientId !== ydoc.clientID) {
           users.push({
             name: state.user.name || "Anonymous",
             color: state.user.color || "#818cf8",
@@ -227,15 +242,11 @@ export default function TiptapEditor({
   }, [provider, ydoc, userName, userEmail]);
 
   // ── Manual save: Ctrl/Cmd + S ──────────────────────────────────────────────
-  useEffect(() =>
-  {
-    const handleKeyDown = (e: KeyboardEvent) =>
-    {
-      if ((e.ctrlKey || e.metaKey) && e.key === "s")
-      {
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if ((e.ctrlKey || e.metaKey) && e.key === "s") {
         e.preventDefault();
-        if (editor && !isReadOnly)
-        {
+        if (editor && !isReadOnly) {
           if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
           saveContent(editor.getHTML());
         }
@@ -246,10 +257,8 @@ export default function TiptapEditor({
   }, [editor, isReadOnly, saveContent]);
 
   // ── Cleanup ────────────────────────────────────────────────────────────────
-  useEffect(() =>
-  {
-    return () =>
-    {
+  useEffect(() => {
+    return () => {
       if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
       provider.awareness.setLocalState(null);
       provider.disconnect();
@@ -280,7 +289,7 @@ export default function TiptapEditor({
       active: () => editor?.isActive("strike") ?? false,
       className: "",
     },
-    { label: "|", title: "divider", action: () => {}, active: () => false, className: "cursor-default opacity-30 pointer-events-none" },
+    { label: "|", title: "divider", action: () => { }, active: () => false, className: "cursor-default opacity-30 pointer-events-none" },
     {
       label: "H1",
       title: "Heading 1",
@@ -302,7 +311,7 @@ export default function TiptapEditor({
       active: () => editor?.isActive("heading", { level: 3 }) ?? false,
       className: "font-semibold",
     },
-    { label: "|", title: "divider2", action: () => {}, active: () => false, className: "cursor-default opacity-30 pointer-events-none" },
+    { label: "|", title: "divider2", action: () => { }, active: () => false, className: "cursor-default opacity-30 pointer-events-none" },
     {
       label: "•",
       title: "Bullet List",
@@ -317,7 +326,7 @@ export default function TiptapEditor({
       active: () => editor?.isActive("orderedList") ?? false,
       className: "",
     },
-    { label: "|", title: "divider3", action: () => {}, active: () => false, className: "cursor-default opacity-30 pointer-events-none" },
+    { label: "|", title: "divider3", action: () => { }, active: () => false, className: "cursor-default opacity-30 pointer-events-none" },
     {
       label: "</>",
       title: "Code Block",
@@ -332,7 +341,7 @@ export default function TiptapEditor({
       active: () => editor?.isActive("blockquote") ?? false,
       className: "",
     },
-    { label: "|", title: "divider4", action: () => {}, active: () => false, className: "cursor-default opacity-30 pointer-events-none" },
+    { label: "|", title: "divider4", action: () => { }, active: () => false, className: "cursor-default opacity-30 pointer-events-none" },
     {
       label: "↩",
       title: "Undo",
@@ -351,17 +360,17 @@ export default function TiptapEditor({
 
   // ── Save status config ─────────────────────────────────────────────────────
   const statusConfig: Record<SaveStatus, { text: string; color: string }> = {
-    idle:    { text: "All saved",    color: "text-zinc-500" },
-    saving:  { text: "Saving…",      color: "text-indigo-400 animate-pulse" },
-    saved:   { text: "✓ Saved",      color: "text-emerald-400" },
-    error:   { text: "⚠ Save failed", color: "text-red-400" },
+    idle: { text: "All saved", color: "text-zinc-500" },
+    saving: { text: "Saving…", color: "text-indigo-400 animate-pulse" },
+    saved: { text: "✓ Saved", color: "text-emerald-400" },
+    error: { text: "⚠ Save failed", color: "text-red-400" },
   };
 
   // ── Connection status config ───────────────────────────────────────────────
   const connConfig: Record<ConnectionStatus, { dot: string; label: string }> = {
-    connecting:   { dot: "bg-amber-400 animate-pulse", label: "Connecting…" },
-    connected:    { dot: "bg-emerald-400",              label: "Live" },
-    disconnected: { dot: "bg-red-500",                  label: "Offline" },
+    connecting: { dot: "bg-amber-400 animate-pulse", label: "Connecting…" },
+    connected: { dot: "bg-emerald-400", label: "Live" },
+    disconnected: { dot: "bg-red-500", label: "Offline" },
   };
 
   return (
@@ -468,3 +477,8 @@ export default function TiptapEditor({
     </div>
   );
 }
+);
+
+TiptapEditor.displayName = "TiptapEditor";
+
+export default TiptapEditor;
