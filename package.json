@@ -5,7 +5,6 @@
   "private": true,
   "scripts": {
     "dev": "next dev",
-    "dev:ws": "node ws-server.mjs",
     "build": "next build",
     "start": "next start",
     "lint": "eslint"
