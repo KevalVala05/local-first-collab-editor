@@ -13,7 +13,8 @@
 | Service | URL |
 | :--- | :--- |
 | **Next.js App** | [https://collab-docs-by-kv.vercel.app](https://collab-docs-by-kv.vercel.app) |
-| **Yjs WebSocket Server** | `wss://yjs-ws-server-production-kv05.up.railway.app` |
+| **Yjs WebSocket Server (live)** | `wss://yjs-ws-server-production-kv05.up.railway.app` |
+| **Yjs WebSocket Server (repo)** | [github.com/KevalVala05/yjs-ws-server](https://github.com/KevalVala05/yjs-ws-server) |
 
 ---
 
@@ -212,7 +213,10 @@ See [`.env.example`](./.env.example) for the full template.
 
 ### WebSocket Server → Railway
 
-The dedicated Yjs WebSocket server lives in a separate repository and is already deployed at:
+The dedicated Yjs WebSocket server lives in its own repository:
+👉 [github.com/KevalVala05/yjs-ws-server](https://github.com/KevalVala05/yjs-ws-server)
+
+It is already deployed on Railway at:
 ```
 wss://yjs-ws-server-production-kv05.up.railway.app
 ```
