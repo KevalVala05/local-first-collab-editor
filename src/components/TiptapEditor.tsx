@@ -99,6 +99,15 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
   >([]);
   const [contentSeeded, setContentSeeded] = useState(false);
 
+  // ── AI Copilot State ──────────────────────────────────────────────────────
+  const [isAiOpen, setIsAiOpen] = useState(false);
+  const [aiAction, setAiAction] = useState<"summarize" | "tone">("summarize");
+  const [targetLanguage, setTargetLanguage] = useState("Spanish");
+  const [targetTone, setTargetTone] = useState("Professional");
+  const [aiInputText, setAiInputText] = useState("");
+  const [isGenerating, setIsGenerating] = useState(false);
+  const abortControllerRef = useRef<AbortController | null>(null);
+
   const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ── Save to backend (debounced) ────────────────────────────────────────────
@@ -118,6 +127,29 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
     },
     [documentId]
   );
+
+  // ── Debounced onUpdate handler to avoid stale closures ─────────────────────
+  const onUpdateRef = useRef<(ed: any) => void>(null);
+  onUpdateRef.current = (ed: any) => {
+    if (isReadOnly) return;
+    const html = ed.getHTML();
+    setWordCount(ed.storage.characterCount?.words() ?? 0);
+
+    const { from } = ed.state.selection;
+    const textBefore = ed.state.doc.textBetween(Math.max(0, from - 3), from);
+    if (textBefore === "/ai") {
+      ed.commands.deleteRange({ from: from - 3, to: from });
+      setIsAiOpen(true);
+      const selected = ed.state.doc.textBetween(ed.state.selection.from, ed.state.selection.to, " ");
+      setAiInputText(selected);
+    }
+
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(
+      () => saveContent(html),
+      AUTOSAVE_DEBOUNCE_MS
+    );
+  };
 
   // ── Tiptap editor ──────────────────────────────────────────────────────────
   const editor = useEditor({
@@ -143,15 +175,7 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
       },
     },
     onUpdate: ({ editor }) => {
-      if (isReadOnly) return;
-      const html = editor.getHTML();
-      setWordCount(editor.storage.characterCount?.words() ?? 0);
-
-      if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
-      saveTimerRef.current = setTimeout(
-        () => saveContent(html),
-        AUTOSAVE_DEBOUNCE_MS
-      );
+      onUpdateRef.current?.(editor);
     },
   });
 
@@ -171,6 +195,93 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
     },
     [editor]
   );
+
+  // ── AI Helper Callbacks ────────────────────────────────────────────────────
+  const getSelectedText = useCallback(() => {
+    if (!editor) return "";
+    const { from, to } = editor.state.selection;
+    return editor.state.doc.textBetween(from, to, " ");
+  }, [editor]);
+
+  const runAiGeneration = useCallback(async () => {
+    if (!editor || isGenerating) return;
+
+    setIsGenerating(true);
+    abortControllerRef.current = new AbortController();
+
+    try {
+      const selectedText = getSelectedText();
+      const editorText = editor.getText();
+      const context = editorText.slice(0, 5000);
+      const textToUse = selectedText || editorText || "Start of document";
+
+      const response = await fetch("/api/ai", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          action: aiAction,
+          text: textToUse,
+          context: context,
+          targetLanguage,
+          targetTone,
+        }),
+        signal: abortControllerRef.current.signal,
+      });
+
+      if (!response.ok) {
+        const err = await response.json();
+        throw new Error(err.message || "Failed to generate AI response");
+      }
+
+      const reader = response.body?.getReader();
+      const decoder = new TextDecoder();
+      if (!reader) return;
+
+      let insertPosition = editor.state.selection.to;
+      let deletedSelection = false;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value, { stream: true });
+        if (chunk) {
+          if (selectedText && !deletedSelection) {
+            editor.commands.deleteSelection();
+            insertPosition = editor.state.selection.from;
+            deletedSelection = true;
+          }
+          editor.commands.insertContentAt(insertPosition, chunk);
+          insertPosition += chunk.length;
+          editor.commands.focus();
+        }
+      }
+      setIsAiOpen(false);
+    } catch (err: any) {
+      if (err.name === "AbortError") {
+        console.log("AI generation aborted by user.");
+      } else {
+        toastError(err.message || "AI generation failed");
+      }
+    } finally {
+      setIsGenerating(false);
+      abortControllerRef.current = null;
+    }
+  }, [editor, aiAction, targetLanguage, targetTone, getSelectedText, isGenerating]);
+
+  const cancelAiGeneration = useCallback(() => {
+    if (abortControllerRef.current) {
+      abortControllerRef.current.abort();
+    }
+  }, []);
+
+  const triggerAiMenuFromButton = useCallback(() => {
+    setIsAiOpen((prev) => !prev);
+    if (editor) {
+      const selected = getSelectedText();
+      setAiInputText(selected);
+    }
+  }, [editor, getSelectedText]);
 
   // ── Seed initial content after Yjs syncs ──────────────────────────────────
   useEffect(() => {
@@ -356,6 +467,14 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
       active: () => false,
       className: "",
     },
+    { label: "|", title: "divider5", action: () => { }, active: () => false, className: "cursor-default opacity-30 pointer-events-none" },
+    {
+      label: "✨ AI Copilot",
+      title: "Open AI Assistant Menu",
+      action: () => triggerAiMenuFromButton(),
+      active: () => isAiOpen,
+      className: "bg-indigo-950/60 text-indigo-400 border border-indigo-900/60 hover:bg-indigo-900/60 hover:text-indigo-300 font-bold",
+    },
   ];
 
   // ── Save status config ─────────────────────────────────────────────────────
@@ -463,8 +582,115 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
       </div>
 
       {/* ── Editor content ── */}
-      <div className="flex-1 overflow-y-auto rounded-xl bg-zinc-950/30 border border-zinc-900/50 p-2">
+      <div className="flex-1 overflow-y-auto rounded-xl bg-zinc-950/30 border border-zinc-900/50 p-2 relative">
         <EditorContent editor={editor} />
+
+        {/* ── AI Copilot Panel ── */}
+        {isAiOpen && (
+          <div className="absolute top-4 left-1/2 -translate-x-1/2 w-[95%] max-w-md bg-zinc-900/95 border border-indigo-500/30 rounded-2xl p-4 shadow-2xl backdrop-blur-md z-30 flex flex-col gap-3 transition-all animate-in fade-in slide-in-from-top-2">
+            {/* Header */}
+            <div className="flex items-center justify-between border-b border-zinc-800 pb-2">
+              <div className="flex items-center gap-1.5">
+                <span className="text-base">✨</span>
+                <h4 className="text-xs font-bold text-zinc-100 uppercase tracking-wider">AI Copilot</h4>
+              </div>
+              <button
+                onClick={() => {
+                  cancelAiGeneration();
+                  setIsAiOpen(false);
+                }}
+                className="text-zinc-500 hover:text-zinc-300 text-xs transition-colors cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            {/* Action Selector */}
+            <div className="grid grid-cols-2 gap-1 bg-zinc-950 p-1 rounded-xl border border-zinc-850">
+              {(
+                [
+                  { id: "summarize", label: "Summary" },
+                  { id: "tone", label: "Tone" },
+                ] as const
+              ).map((act) => (
+                <button
+                  key={act.id}
+                  onClick={() => setAiAction(act.id)}
+                  className={`py-1.5 px-1 rounded-lg text-[10px] font-bold transition-all cursor-pointer text-center
+                    ${aiAction === act.id
+                      ? "bg-indigo-600 text-white shadow-md shadow-indigo-500/20"
+                      : "text-zinc-400 hover:text-zinc-200 hover:bg-zinc-900"
+                    }`}
+                >
+                  {act.label}
+                </button>
+              ))}
+            </div>
+
+            {/* Context Display & Selection Notice */}
+            <div className="text-[10px] text-zinc-500 flex items-center justify-between">
+              <span>
+                {getSelectedText()
+                  ? "👉 Selected text will be replaced"
+                  : "👉 Insert text at current cursor"}
+              </span>
+              {getSelectedText() && (
+                <span className="text-indigo-400 font-medium font-sans">
+                  {getSelectedText().length} chars selected
+                </span>
+              )}
+            </div>
+
+            {/* Conditional Options */}
+
+            {aiAction === "tone" && (
+              <div className="flex items-center gap-2 bg-zinc-950 p-2 rounded-xl border border-zinc-850">
+                <span className="text-[10px] text-zinc-400 font-bold shrink-0 uppercase tracking-wide">Tone:</span>
+                <select
+                  value={targetTone}
+                  onChange={(e) => setTargetTone(e.target.value)}
+                  className="w-full bg-transparent text-xs text-zinc-200 focus:outline-none cursor-pointer"
+                >
+                  {["Professional", "Casual", "Academic", "Creative", "Persuasive", "Direct", "Excited"].map((t) => (
+                    <option key={t} value={t} className="bg-zinc-900 text-zinc-200">{t}</option>
+                  ))}
+                </select>
+              </div>
+            )}
+
+            {/* Generation controls */}
+            <div className="flex items-center justify-between mt-1 pt-2 border-t border-zinc-800/40">
+              {isGenerating ? (
+                <div className="flex items-center gap-2 text-indigo-400 text-xs font-semibold">
+                  <div className="w-3.5 h-3.5 border-2 border-indigo-400 border-t-transparent rounded-full animate-spin" />
+                  <span>AI is writing...</span>
+                </div>
+              ) : (
+                <span className="text-[10px] text-zinc-500">
+                  Type <kbd className="bg-zinc-800 px-1 py-0.5 rounded text-zinc-400 font-mono text-[9px]">/ai</kbd> in editor
+                </span>
+              )}
+
+              <div className="flex items-center gap-2">
+                {isGenerating ? (
+                  <button
+                    onClick={cancelAiGeneration}
+                    className="px-3.5 py-1.5 text-xs rounded-xl bg-red-500/10 hover:bg-red-500/20 text-red-400 border border-red-500/20 font-bold transition-all cursor-pointer"
+                  >
+                    Cancel
+                  </button>
+                ) : (
+                  <button
+                    onClick={runAiGeneration}
+                    className="px-4 py-1.5 text-xs rounded-xl bg-indigo-600 hover:bg-indigo-500 text-white font-bold transition-all shadow-md shadow-indigo-500/20 cursor-pointer"
+                  >
+                    Generate ✨
+                  </button>
+                )}
+              </div>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ── Footer stats ── */}
