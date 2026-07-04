@@ -6,9 +6,41 @@ export const ERROR_MESSAGES = {
   USER_NOT_FOUND: "No user found with this email",
   INCORRECT_PASSWORD: "Incorrect password",
   SERVER_ERROR: "An unexpected error occurred on the server",
+
+  // Document messages
+  UNAUTHORIZED: "Unauthorized access. Please log in.",
+  DOCUMENT_NOT_FOUND: "Document not found",
+  DOCUMENT_ACCESS_DENIED: "You do not have permission to access this document",
+  VIEWER_CANNOT_EDIT: "You have read-only access. Viewers cannot edit documents.",
+  OWNER_ONLY_DELETE: "Only the document owner can delete this document",
+  OWNER_CANNOT_SHARE: "This user is already the owner of the document",
+  USER_EMAIL_NOT_FOUND: "User with this email is not registered",
+
+  // Validation messages
+  TITLE_REQUIRED: "Title is required",
+  TITLE_MIN_LENGTH: "Title must be at least 2 characters",
+  TITLE_MAX_LENGTH: "Title must not exceed 100 characters",
+  NAME_REQUIRED: "Name is required",
+  NAME_MIN_LENGTH: "Name must be at least 2 characters",
+  NAME_MAX_LENGTH: "Name must not exceed 50 characters",
+  EMAIL_REQUIRED: "Email is required",
+  INVALID_EMAIL: "Invalid email address",
+  EMAIL_MIN_LENGTH: "Email must be at least 2 characters",
+  EMAIL_MAX_LENGTH: "Email must not exceed 50 characters",
+  PASSWORD_REQUIRED: "Password is required",
+  PASSWORD_MIN_LENGTH: "Password must be at least 6 characters",
+  PASSWORD_MAX_LENGTH: "Password must not exceed 100 characters",
+  ROLE_INVALID: "Role must be either EDITOR or VIEWER",
 };
 
 export const SUCCESS_MESSAGES = {
   REGISTER_SUCCESS: "User registered successfully",
   DEFAULT_SUCCESS: "Success",
+
+  // Document messages
+  DOCUMENT_CREATE_SUCCESS: "Document created successfully",
+  DOCUMENT_RETRIEVE_SUCCESS: "Documents retrieved successfully",
+  DOCUMENT_UPDATE_SUCCESS: "Document updated successfully",
+  DOCUMENT_DELETE_SUCCESS: "Document deleted successfully",
+  DOCUMENT_SHARE_SUCCESS: "Document shared successfully",
 };
