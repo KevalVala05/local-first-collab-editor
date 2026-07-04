@@ -2,7 +2,7 @@ import React from "react";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/app/api/auth/[...nextauth]/route";
 import { redirect } from "next/navigation";
-import LogoutButton from "@/components/LogoutButton";
+import UserMenu from "@/components/UserMenu";
 
 export default async function DashboardPage()
 {
@@ -20,10 +20,7 @@ export default async function DashboardPage()
           Collaborative Editor
         </h1>
         <div className="flex items-center gap-4">
-          <span className="text-zinc-400 text-sm hidden sm:inline">
-            Logged in as <strong className="text-zinc-200">{session.user?.name || session.user?.email}</strong>
-          </span>
-          <LogoutButton />
+          <UserMenu user={session.user || {}} />
         </div>
       </header>
 

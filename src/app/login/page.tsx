@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, Suspense } from "react";
+import React, { useState, useEffect, Suspense } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { useForm } from "react-hook-form";
@@ -9,6 +9,7 @@ import { useMutation } from "@tanstack/react-query";
 import { signIn } from "next-auth/react";
 import { loginSchema } from "@/validation/auth";
 import { z } from "zod";
+import { toast } from "react-toastify";
 
 type LoginInput = z.infer<typeof loginSchema>;
 
@@ -17,6 +18,7 @@ function LoginForm()
   const router = useRouter();
   const searchParams = useSearchParams();
   const isRegistered = searchParams?.get("registered") === "true";
+  const [showPassword, setShowPassword] = useState(false);
 
   const {
     register,
@@ -28,8 +30,13 @@ function LoginForm()
     }
   );
 
-  const [success, setSuccess] = useState(isRegistered ? "Account created successfully! Please sign in." : "");
-  const [authError, setAuthError] = useState("");
+  useEffect(() =>
+  {
+    if (isRegistered)
+    {
+      toast.success("Account created successfully! Please sign in.");
+    }
+  }, [isRegistered]);
 
   const { mutate, isPending } = useMutation(
     {
@@ -52,20 +59,19 @@ function LoginForm()
       },
       onSuccess: () =>
       {
+        toast.success("Signed in successfully!");
         router.push("/dashboard");
         router.refresh();
       },
       onError: (err: any) =>
       {
-        setAuthError(err.message || "Invalid credentials");
+        toast.error(err.message || "Invalid credentials");
       },
     }
   );
 
   const onSubmit = (data: LoginInput) =>
   {
-    setSuccess("");
-    setAuthError("");
     mutate(data);
   };
 
@@ -84,18 +90,6 @@ function LoginForm()
             Sign in to access your documents and sync offline edits
           </p>
         </div>
-
-        {success && (
-          <div className="mb-6 p-4 bg-emerald-900/20 border border-emerald-500/30 rounded-xl text-emerald-400 text-sm flex items-center gap-2">
-            <span className="font-semibold">Success:</span> {success}
-          </div>
-        )}
-
-        {authError && (
-          <div className="mb-6 p-4 bg-red-900/20 border border-red-500/30 rounded-xl text-red-400 text-sm flex items-center gap-2">
-            <span className="font-semibold">Error:</span> {authError}
-          </div>
-        )}
 
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-6">
           <div>
@@ -118,13 +112,32 @@ function LoginForm()
             <label htmlFor="password-input" className="block text-xs font-semibold text-zinc-300 uppercase tracking-wider mb-2">
               Password
             </label>
-            <input
-              id="password-input"
-              type="password"
-              {...register("password")}
-              className="w-full bg-zinc-900/60 border border-zinc-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl px-4 py-3 text-zinc-100 placeholder-zinc-500 transition-all outline-none text-sm"
-              placeholder="••••••••"
-            />
+            <div className="relative">
+              <input
+                id="password-input"
+                type={showPassword ? "text" : "password"}
+                {...register("password")}
+                className="w-full bg-zinc-900/60 border border-zinc-800 focus:border-indigo-500 focus:ring-1 focus:ring-indigo-500 rounded-xl pl-4 pr-11 py-3 text-zinc-100 placeholder-zinc-500 transition-all outline-none text-sm"
+                placeholder="••••••••"
+              />
+              <button
+                type="button"
+                onClick={() => setShowPassword(!showPassword)}
+                className="absolute right-3 top-1/2 -translate-y-1/2 text-zinc-400 hover:text-zinc-200 transition-colors focus:outline-none cursor-pointer p-1"
+                aria-label={showPassword ? "Hide password" : "Show password"}
+              >
+                {showPassword ? (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13.875 18.825A10.05 10.05 0 0112 19c-4.478 0-8.268-2.943-9.543-7a9.97 9.97 0 011.563-3.029m5.858.908a3 3 0 114.243 4.243M9.878 9.878l4.242 4.242M9.88 9.88l-3.29-3.29m7.532 7.532l3.29 3.29M3 3l18 18" />
+                  </svg>
+                ) : (
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 12a3 3 0 11-6 0 3 3 0 016 0z" />
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z" />
+                  </svg>
+                )}
+              </button>
+            </div>
             {errors.password && (
               <p className="text-red-400 text-xs mt-1.5 ml-1">{errors.password.message}</p>
             )}
