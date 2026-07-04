@@ -5,10 +5,12 @@ on:
     branches:
       - main
       - master
+      - development
   pull_request:
     branches:
       - main
       - master
+      - development
 
 jobs:
   verify:
@@ -25,7 +27,7 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies
-        run: npm ci
+        run: npm install
 
       - name: Run TypeScript validation
         run: npx tsc --noEmit
