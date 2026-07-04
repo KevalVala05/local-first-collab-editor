@@ -1,8 +1,8 @@
 "use client";
 
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
-import axios from "axios";
+import api from "@/lib/api";
 import { useRouter } from "next/navigation";
 import UserMenu from "@/components/UserMenu";
 import { DocumentRole } from "@/types/document";
@@ -75,7 +75,7 @@ export default function DashboardClient({ session }: DashboardClientProps)
     queryKey: ["documents", { q, sortBy, order, page }],
     queryFn: async () =>
     {
-      const response = await axios.get("/api/documents", {
+      const response = await api.get("/documents", {
         params: { q, sortBy, order, page, limit },
       });
       return response.data.data;
@@ -119,10 +119,27 @@ export default function DashboardClient({ session }: DashboardClientProps)
     },
   });
 
-  const handleCreateDoc = () =>
-  {
-    createMutation.mutate();
+  // Modal state for creating a document
+  const [createModalOpen, setCreateModalOpen] = useState(false);
+  const [newDocTitle, setNewDocTitle] = useState("");
+
+  const handleOpenCreate = () => setCreateModalOpen(true);
+  const handleCloseCreate = () => {
+    setCreateModalOpen(false);
+    setNewDocTitle("");
   };
+
+  const handleCreateSubmit = () => {
+    if (!newDocTitle.trim()) return; // safety guard
+    createMutation.mutate(newDocTitle.trim());
+  };
+
+  // When creation succeeds, close the modal automatically
+  useEffect(() => {
+    if (createMutation.isSuccess) {
+      handleCloseCreate();
+    }
+  }, [createMutation.isSuccess]);
 
   const handleRenameSubmit = (e: React.FormEvent) =>
   {
@@ -192,7 +209,7 @@ export default function DashboardClient({ session }: DashboardClientProps)
           </div>
           <button
             id="create-doc-btn"
-            onClick={handleCreateDoc}
+            onClick={handleOpenCreate}
             disabled={createMutation.isPending}
             className="self-start md:self-auto bg-indigo-600 hover:bg-indigo-500 active:bg-indigo-700 disabled:opacity-50 text-white font-semibold py-3 px-5 rounded-xl transition-all shadow-lg hover:shadow-indigo-500/20 flex items-center gap-2 cursor-pointer text-sm"
           >
@@ -214,6 +231,46 @@ export default function DashboardClient({ session }: DashboardClientProps)
             )}
           </button>
         </div>
+
+        {/* ── Create Document Modal ── */}
+        {createModalOpen && (
+          <div className="fixed inset-0 bg-black/60 backdrop-blur-sm flex items-center justify-center z-50">
+            <div className="bg-zinc-900 border border-zinc-800 rounded-2xl p-6 w-full max-w-sm shadow-2xl">
+              <h2 className="text-lg font-bold text-white mb-1">New Document</h2>
+              <p className="text-zinc-400 text-sm mb-4">Give your document a title to get started.</p>
+              <input
+                autoFocus
+                type="text"
+                value={newDocTitle}
+                onChange={(e) => setNewDocTitle(e.target.value)}
+                onKeyDown={(e) => { if (e.key === "Enter") handleCreateSubmit(); }}
+                placeholder="e.g. Project Plan"
+                className="w-full bg-zinc-950 border border-zinc-700 focus:border-indigo-500 rounded-xl px-4 py-2.5 text-white placeholder-zinc-500 outline-none text-sm transition-all mb-4"
+                minLength={2}
+                maxLength={100}
+              />
+              {newDocTitle.trim().length > 0 && newDocTitle.trim().length < 2 && (
+                <p className="text-red-400 text-xs mb-3 -mt-2">Title must be at least 2 characters.</p>
+              )}
+              <div className="flex justify-end gap-2">
+                <button
+                  onClick={handleCloseCreate}
+                  className="px-4 py-2 text-sm rounded-xl text-zinc-300 bg-zinc-800 hover:bg-zinc-700 transition-colors cursor-pointer"
+                >
+                  Cancel
+                </button>
+                <button
+                  onClick={handleCreateSubmit}
+                  disabled={newDocTitle.trim().length < 2 || createMutation.isPending}
+                  className="px-4 py-2 text-sm rounded-xl text-white bg-indigo-600 hover:bg-indigo-500 disabled:opacity-50 transition-colors cursor-pointer font-semibold"
+                >
+                  {createMutation.isPending ? "Creating..." : "Create"}
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
+
 
         {/* Filter and Control Panel */}
         <div className="bg-zinc-900/40 border border-zinc-800/80 rounded-2xl p-4 mb-6 backdrop-blur-md flex flex-col md:flex-row items-center justify-between gap-4">
@@ -288,7 +345,7 @@ export default function DashboardClient({ session }: DashboardClientProps)
             </p>
             {!q && (
               <button
-                onClick={handleCreateDoc}
+                onClick={handleOpenCreate}
                 className="bg-indigo-600 hover:bg-indigo-500 text-white font-semibold py-2.5 px-5 rounded-xl transition-all shadow-md text-sm cursor-pointer"
               >
                 + Create Document

@@ -1,8 +1,23 @@
 import { useMutation, useQueryClient } from "@tanstack/react-query";
-import axios from "axios";
+import api from "@/lib/api";
 import { useRouter } from "next/navigation";
 import { toastSuccess, toastError } from "@/lib/toast";
 import { SUCCESS_MESSAGES } from "@/constants/messages";
+
+// ── Types & Interfaces ──────────────────────────────────────────────────────
+
+interface RenameArgs {
+  id: string;
+  title: string;
+}
+
+interface ShareArgs {
+  id: string;
+  email: string;
+  role: string;
+}
+
+// ── Hooks ───────────────────────────────────────────────────────────────────
 
 // 1. Create Document Hook
 export function useCreateDocumentMutation()
@@ -11,9 +26,9 @@ export function useCreateDocumentMutation()
   const queryClient = useQueryClient();
 
   return useMutation({
-    mutationFn: async () =>
+    mutationFn: async (title: string) =>
     {
-      const res = await axios.post("/api/documents", {});
+      const res = await api.post("/documents", { title });
       return res.data.data;
     },
     onSuccess: (newDoc) =>
@@ -24,22 +39,13 @@ export function useCreateDocumentMutation()
     },
     onError: (err: unknown) =>
     {
-      const message = axios.isAxiosError(err)
-        ? err.response?.data?.message
-        : err instanceof Error
-        ? err.message
-        : "Failed to create document";
-      toastError(message || "Failed to create document");
+      const message = err instanceof Error ? err.message : "Failed to create document";
+      toastError(message);
     },
   });
 }
 
 // 2. Rename Document Hook
-interface RenameArgs {
-  id: string;
-  title: string;
-}
-
 export function useRenameDocumentMutation(options?: { onSuccess?: () => void })
 {
   const queryClient = useQueryClient();
@@ -47,7 +53,7 @@ export function useRenameDocumentMutation(options?: { onSuccess?: () => void })
   return useMutation({
     mutationFn: async ({ id, title }: RenameArgs) =>
     {
-      const res = await axios.patch(`/api/documents/${id}`, { title });
+      const res = await api.patch(`/documents/${id}`, { title });
       return res.data.data;
     },
     onSuccess: () =>
@@ -61,12 +67,8 @@ export function useRenameDocumentMutation(options?: { onSuccess?: () => void })
     },
     onError: (err: unknown) =>
     {
-      const message = axios.isAxiosError(err)
-        ? err.response?.data?.message
-        : err instanceof Error
-        ? err.message
-        : "Failed to rename document";
-      toastError(message || "Failed to rename document");
+      const message = err instanceof Error ? err.message : "Failed to rename document";
+      toastError(message);
     },
   });
 }
@@ -79,7 +81,7 @@ export function useDeleteDocumentMutation(options?: { onSuccess?: () => void })
   return useMutation({
     mutationFn: async (id: string) =>
     {
-      await axios.delete(`/api/documents/${id}`);
+      await api.delete(`/documents/${id}`);
     },
     onSuccess: () =>
     {
@@ -92,23 +94,13 @@ export function useDeleteDocumentMutation(options?: { onSuccess?: () => void })
     },
     onError: (err: unknown) =>
     {
-      const message = axios.isAxiosError(err)
-        ? err.response?.data?.message
-        : err instanceof Error
-        ? err.message
-        : "Failed to delete document";
-      toastError(message || "Failed to delete document");
+      const message = err instanceof Error ? err.message : "Failed to delete document";
+      toastError(message);
     },
   });
 }
 
 // 4. Share Document Hook
-interface ShareArgs {
-  id: string;
-  email: string;
-  role: string;
-}
-
 export function useShareDocumentMutation<T = unknown>(options?: { onSuccess?: (updatedDoc: T) => void })
 {
   const queryClient = useQueryClient();
@@ -116,7 +108,7 @@ export function useShareDocumentMutation<T = unknown>(options?: { onSuccess?: (u
   return useMutation({
     mutationFn: async ({ id, email, role }: ShareArgs) =>
     {
-      const res = await axios.post(`/api/documents/${id}/share`, { email, role });
+      const res = await api.post(`/documents/${id}/share`, { email, role });
       return res.data.data;
     },
     onSuccess: (updatedDoc) =>
@@ -130,12 +122,8 @@ export function useShareDocumentMutation<T = unknown>(options?: { onSuccess?: (u
     },
     onError: (err: unknown) =>
     {
-      const message = axios.isAxiosError(err)
-        ? err.response?.data?.message
-        : err instanceof Error
-        ? err.message
-        : "Failed to share document";
-      toastError(message || "Failed to share document");
+      const message = err instanceof Error ? err.message : "Failed to share document";
+      toastError(message);
     },
   });
 }
