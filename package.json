@@ -10,6 +10,7 @@
     "lint": "eslint"
   },
   "dependencies": {
+    "@ai-sdk/google": "^4.0.8",
     "@hookform/resolvers": "^5.4.0",
     "@tanstack/react-query": "^5.101.2",
     "@tiptap/extension-character-count": "^3.27.1",
@@ -19,6 +20,7 @@
     "@tiptap/react": "^3.27.1",
     "@tiptap/starter-kit": "^3.27.1",
     "@tiptap/y-tiptap": "^3.0.6",
+    "ai": "^7.0.15",
     "axios": "^1.18.1",
     "bcryptjs": "^3.0.3",
     "dexie": "^4.4.4",
