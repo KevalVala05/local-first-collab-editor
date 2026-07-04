@@ -7,7 +7,6 @@ import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useRegisterUserMutation } from "@/hooks/useAuthMutations";
 import { registerSchema } from "@/validation/auth";
-import { registerUser } from "@/services/authService";
 import { z } from "zod";
 
 

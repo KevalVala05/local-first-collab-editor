@@ -103,9 +103,7 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
   // ── AI Copilot State ──────────────────────────────────────────────────────
   const [isAiOpen, setIsAiOpen] = useState(false);
   const [aiAction, setAiAction] = useState<"summarize" | "tone">("summarize");
-  const [targetLanguage, setTargetLanguage] = useState("Spanish");
   const [targetTone, setTargetTone] = useState("Professional");
-  const [aiInputText, setAiInputText] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
   const abortControllerRef = useRef<AbortController | null>(null);
 
@@ -159,8 +157,9 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
   );
 
   // ── Debounced onUpdate handler to avoid stale closures ─────────────────────
-  const onUpdateRef = useRef<(ed: any) => void>(null);
-  onUpdateRef.current = (ed: any) => {
+  type EditorLike = { getHTML: () => string; state: { selection: { from: number; to: number }; doc: { textBetween: (a: number, b: number, sep?: string) => string } }; commands: { deleteRange: (r: { from: number; to: number }) => void }; storage: { characterCount?: { words: () => number } } };
+  const onUpdateRef = useRef<((ed: EditorLike) => void) | null>(null);
+  onUpdateRef.current = (ed: EditorLike) => {
     if (isReadOnly) return;
     const html = ed.getHTML();
     setWordCount(ed.storage.characterCount?.words() ?? 0);
@@ -169,9 +168,9 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
     const textBefore = ed.state.doc.textBetween(Math.max(0, from - 3), from);
     if (textBefore === "/ai") {
       ed.commands.deleteRange({ from: from - 3, to: from });
+    const selected = ed.state.doc.textBetween(ed.state.selection.from, ed.state.selection.to, " ");
       setIsAiOpen(true);
-      const selected = ed.state.doc.textBetween(ed.state.selection.from, ed.state.selection.to, " ");
-      setAiInputText(selected);
+      void selected;
     }
 
     if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
@@ -187,7 +186,7 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
       StarterKit.configure({
         heading: { levels: [1, 2, 3] },
         history: false,
-      } as any),
+      } as Parameters<typeof StarterKit.configure>[0]),
       Placeholder.configure({
         placeholder: isReadOnly
           ? "This document is view-only."
@@ -254,7 +253,7 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
           action: aiAction,
           text: textToUse,
           context: context,
-          targetLanguage,
+          targetLanguage: "Spanish",
           targetTone,
         }),
         signal: abortControllerRef.current.signal,
@@ -289,17 +288,18 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
         }
       }
       setIsAiOpen(false);
-    } catch (err: any) {
-      if (err.name === "AbortError") {
+    } catch (err: unknown) {
+      if (err instanceof Error && err.name === "AbortError") {
         console.log("AI generation aborted by user.");
       } else {
-        toastError(err.message || "AI generation failed");
+        const message = err instanceof Error ? err.message : "AI generation failed";
+        toastError(message);
       }
     } finally {
       setIsGenerating(false);
       abortControllerRef.current = null;
     }
-  }, [editor, aiAction, targetLanguage, targetTone, getSelectedText, isGenerating]);
+  }, [editor, aiAction, targetTone, getSelectedText, isGenerating]);
 
   const cancelAiGeneration = useCallback(() => {
     if (abortControllerRef.current) {
@@ -309,11 +309,7 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
 
   const triggerAiMenuFromButton = useCallback(() => {
     setIsAiOpen((prev) => !prev);
-    if (editor) {
-      const selected = getSelectedText();
-      setAiInputText(selected);
-    }
-  }, [editor, getSelectedText]);
+  }, []);
 
   // ── Seed initial content after Yjs syncs ──────────────────────────────────
   useEffect(() => {

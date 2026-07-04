@@ -79,7 +79,7 @@ export const POST = withErrorHandler(
     {
       decompressedContent = zlib.gunzipSync(Buffer.from(snapshot.content, "base64")).toString("utf-8");
     }
-    catch (err)
+    catch
     {
       decompressedContent = snapshot.content;
     }

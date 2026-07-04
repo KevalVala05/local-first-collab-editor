@@ -40,7 +40,7 @@ async function pingServer(): Promise<boolean>
     clearTimeout(timeoutId);
     return res.ok;
   }
-  catch (err)
+  catch
   {
     return false;
   }
@@ -181,12 +181,13 @@ export function SyncProvider({ children }: { children: React.ReactNode })
             }
           }
         }
-        catch (err: any)
+        catch (err: unknown)
         {
           console.error(`Sync error on outbox item ${item.id}`, err);
 
           // Network errors should pause sync loop
-          const isNetworkError = !err.status && !err.response;
+          const errObj = err as { status?: number; response?: unknown };
+          const isNetworkError = !errObj.status && !errObj.response;
           if (isNetworkError)
           {
             setSyncStatus("error");
@@ -256,10 +257,11 @@ export function SyncProvider({ children }: { children: React.ReactNode })
 
       const intervalId = setInterval(checkConnection, 15000);
 
-      // Trigger sync initially if online
+      // Trigger sync initially if online — wrapped in setTimeout to avoid
+      // calling setState synchronously within the effect body
       if (typeof window !== "undefined" && navigator.onLine)
       {
-        syncQueue();
+        setTimeout(() => syncQueue(), 0);
       }
 
       return () =>
