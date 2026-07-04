@@ -7,7 +7,6 @@ import { sendSuccessResponse } from "@/lib/response";
 import { StatusCodes } from "http-status-codes";
 import { createDocumentSchema } from "@/validation/document";
 import { ERROR_MESSAGES, SUCCESS_MESSAGES } from "@/constants/messages";
-import { DocumentRole } from "@/types/document";
 import { checkRateLimit } from "@/lib/rateLimit";
 
 // GET /api/documents - Fetch list of accessible documents

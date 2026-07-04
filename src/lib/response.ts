@@ -3,8 +3,8 @@ import { StatusCodes } from "http-status-codes";
 
 export function sendSuccessResponse<T>(
   data: T,
-  // res is typed as any to support custom response objects or null in Next.js serverless functions
-  res: any,
+  // res is always null in Next.js serverless routes (legacy Express-style placeholder)
+  res: null,
   message: string = "Success",
   code: number = StatusCodes.OK
 ): NextResponse

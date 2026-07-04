@@ -25,8 +25,8 @@ api.interceptors.response.use(
     // Attach response status if available for detailed error handling in components
     if (error.response)
     {
-      (customError as any).status = error.response.status;
-      (customError as any).data = error.response.data;
+      (customError as Error & { status?: number; data?: unknown }).status = error.response.status;
+      (customError as Error & { status?: number; data?: unknown }).data = error.response.data;
     }
 
     return Promise.reject(customError);

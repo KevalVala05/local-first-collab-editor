@@ -3,7 +3,9 @@ import { ZodError } from "zod";
 import { StatusCodes } from "http-status-codes";
 import { ERROR_MESSAGES } from "@/constants/messages";
 
-type ApiHandler = (req: Request, ...args: any[]) => Promise<NextResponse> | NextResponse;
+// Using a generic so TypeScript infers the exact arg types of each route handler,
+// avoiding `any` while still being compatible with destructured params objects.
+type ApiHandler<TArgs extends unknown[]> = (req: Request, ...args: TArgs) => Promise<NextResponse> | NextResponse;
 
 export class ApiError extends Error
 {
@@ -17,15 +19,15 @@ export class ApiError extends Error
   }
 }
 
-export function withErrorHandler(handler: ApiHandler)
+export function withErrorHandler<TArgs extends unknown[]>(handler: ApiHandler<TArgs>)
 {
-  return async function (req: Request, ...args: any[])
+  return async function (req: Request, ...args: TArgs)
   {
     try
     {
       return await handler(req, ...args);
     }
-    catch (error: any)
+    catch (error: unknown)
     {
       console.error("API error captured by middleware:", error);
 
@@ -46,7 +48,8 @@ export function withErrorHandler(handler: ApiHandler)
       }
 
       // MongoDB duplicate key error (code 11000)
-      if (error.code === 11000)
+      const mongoError = error as { code?: number };
+      if (mongoError.code === 11000)
       {
         return NextResponse.json(
           { message: "Duplicate field value entered" },

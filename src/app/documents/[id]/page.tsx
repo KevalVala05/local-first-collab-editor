@@ -42,6 +42,16 @@ interface DocumentData
   isLocalOnly?: boolean;
 }
 
+interface SnapshotItem {
+  _id: string;
+  version: number;
+  title: string;
+  content: string;
+  createdBy?: { name?: string };
+  createdAt: string;
+}
+
+type PopulatedId = { _id: string; name?: string; email?: string };
 // ── Page ────────────────────────────────────────────────────────────────────
 
 export default function DocumentPage()
@@ -52,7 +62,7 @@ export default function DocumentPage()
   const { syncStatus, isOnline } = useSync();
 
   const [isHistoryOpen, setIsHistoryOpen] = useState(false);
-  const [previewSnapshot, setPreviewSnapshot] = useState<any>(null);
+  const [previewSnapshot, setPreviewSnapshot] = useState<SnapshotItem | null>(null);
   const [isCreatingSnapshot, setIsCreatingSnapshot] = useState(false);
   const [snapshotTitle, setSnapshotTitle] = useState("");
   const editorRef = useRef<TiptapEditorRef | null>(null);
@@ -91,9 +101,11 @@ export default function DocumentPage()
       refetchSnapshots();
       toastSuccess("Snapshot captured successfully!");
     }
-    catch (err: any)
+    catch (err: unknown)
     {
-      const msg = err.response?.data?.message || "Failed to create snapshot";
+      const msg = err instanceof Error
+        ? (err as Error & { response?: { data?: { message?: string } } }).response?.data?.message ?? err.message
+        : "Failed to create snapshot";
       toastError(msg);
     }
     finally
@@ -124,9 +136,11 @@ export default function DocumentPage()
 
       toastSuccess("Document successfully rolled back to chosen version!");
     }
-    catch (err: any)
+    catch (err: unknown)
     {
-      const msg = err.response?.data?.message || "Failed to restore snapshot";
+      const msg = err instanceof Error
+        ? (err as Error & { response?: { data?: { message?: string } } }).response?.data?.message ?? err.message
+        : "Failed to restore snapshot";
       toastError(msg);
     }
   };
@@ -307,7 +321,7 @@ export default function DocumentPage()
   const userId = session?.user?.id;
 
   const docOwnerId = typeof doc.ownerId === "object" && doc.ownerId !== null
-    ? (doc.ownerId as any)._id
+    ? (doc.ownerId as PopulatedId)._id
     : String(doc.ownerId);
 
   const isOwner = docOwnerId === userId;
@@ -317,7 +331,7 @@ export default function DocumentPage()
     (c) =>
     {
       const collabId = typeof c.userId === "object" && c.userId !== null
-        ? (c.userId as any)._id
+        ? (c.userId as PopulatedId)._id
         : String(c.userId);
       return collabId !== docOwnerId;
     }
@@ -327,7 +341,7 @@ export default function DocumentPage()
     (c) =>
     {
       const collabId = typeof c.userId === "object" && c.userId !== null
-        ? (c.userId as any)._id
+        ? (c.userId as PopulatedId)._id
         : String(c.userId);
       return collabId === userId;
     }
@@ -360,7 +374,7 @@ export default function DocumentPage()
       (c) =>
       {
         const collabId = typeof c.userId === "object" && c.userId !== null
-          ? (c.userId as any)._id
+          ? (c.userId as PopulatedId)._id
           : String(c.userId);
         return collabId === userId;
       }
@@ -543,7 +557,7 @@ export default function DocumentPage()
                 {snapshots && snapshots.length > 0 ? (
                   <div className="relative border-l border-zinc-800 pl-4 ml-2 space-y-5 py-2">
                     {snapshots.map(
-                      (snap: any) =>
+                      (snap: SnapshotItem) =>
                       {
                         return (
                           <div key={snap._id} className="relative group">

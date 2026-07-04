@@ -94,7 +94,7 @@ export async function POST(req: Request)
       "gemini-3-flash-preview"
     ];
 
-    let lastError: any = null;
+    let lastError: unknown = null;
 
     for (const modelName of models)
     {
@@ -153,20 +153,22 @@ export async function POST(req: Request)
           headers: { "Content-Type": "text/plain; charset=utf-8" },
         });
       }
-      catch (err: any)
+      catch (err: unknown)
       {
-        console.warn(`[AI Copilot] Model ${modelName} failed. Error:`, err.message || err);
+        const errMsg = err instanceof Error ? err.message : String(err);
+        console.warn(`[AI Copilot] Model ${modelName} failed. Error:`, errMsg);
         lastError = err;
       }
     }
 
     throw lastError || new Error("All fallback Gemini models failed.");
   }
-  catch (error: any)
+  catch (error: unknown)
   {
     console.error("AI Assistant Error:", error);
+    const errorMsg = error instanceof Error ? error.message : ERROR_MESSAGES.AI_FAILED;
     return NextResponse.json(
-      { message: error.message || ERROR_MESSAGES.AI_FAILED },
+      { message: errorMsg },
       { status: StatusCodes.INTERNAL_SERVER_ERROR }
     );
   }

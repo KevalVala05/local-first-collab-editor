@@ -29,7 +29,7 @@ interface ShareArgs
 // ── Hooks ───────────────────────────────────────────────────────────────────
 
 // 1. Create Document Hook
-export function useCreateDocumentMutation()
+export function useCreateDocumentMutation(options?: { onSuccess?: () => void })
 {
   const router = useRouter();
   const queryClient = useQueryClient();
@@ -91,6 +91,10 @@ export function useCreateDocumentMutation()
             queryKey: ["documents"],
           }
         );
+        if (options?.onSuccess)
+        {
+          options.onSuccess();
+        }
         router.push(`/documents/${newDoc._id}`);
       },
       onError: (err: unknown) =>

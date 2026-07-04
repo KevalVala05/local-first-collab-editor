@@ -1,6 +1,6 @@
 "use client";
 
-import React, { useState, useEffect } from "react";
+import React, { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import api from "@/lib/api";
 import { useRouter } from "next/navigation";
@@ -13,7 +13,7 @@ import {
   useShareDocumentMutation,
 } from "@/hooks/useDocumentMutations";
 import { localDb, getCachedDocuments } from "@/lib/localDb";
-import { useSync, type SyncStatus } from "@/context/SyncContext";
+import { useSync } from "@/context/SyncContext";
 import Footer from "@/components/Footer";
 
 interface Collaborator {
@@ -47,6 +47,11 @@ interface DashboardClientProps {
       id?: string | null;
     };
   };
+}
+
+interface LocalDocData extends DocumentData {
+  syncStatus?: string;
+  isLocalOnly?: boolean;
 }
 
 export default function DashboardClient({ session }: DashboardClientProps)
@@ -132,8 +137,14 @@ export default function DashboardClient({ session }: DashboardClientProps)
   const documents: DocumentData[] = data?.documents || [];
   const pagination = data?.pagination || { page: 1, limit: 6, total: 0, pages: 1 };
 
-  // CREATE Document mutation
-  const createMutation = useCreateDocumentMutation();
+  // CREATE Document mutation — close modal on success
+  const createMutation = useCreateDocumentMutation({
+    onSuccess: () =>
+    {
+      setCreateModalOpen(false);
+      setNewDocTitle("");
+    },
+  });
 
   // RENAME Document mutation
   const renameMutation = useRenameDocumentMutation({
@@ -181,12 +192,6 @@ export default function DashboardClient({ session }: DashboardClientProps)
     createMutation.mutate(newDocTitle.trim());
   };
 
-  // When creation succeeds, close the modal automatically
-  useEffect(() => {
-    if (createMutation.isSuccess) {
-      handleCloseCreate();
-    }
-  }, [createMutation.isSuccess]);
 
   const handleRenameSubmit = (e: React.FormEvent) =>
   {
@@ -445,8 +450,9 @@ export default function DashboardClient({ session }: DashboardClientProps)
               const isOwner = doc.ownerId?._id === currentUserId;
               const ownerName = doc.ownerId?.name || "Unknown";
 
-              const syncStatus = (doc as any).syncStatus || "synced";
-              const isLocalOnly = (doc as any).isLocalOnly || doc._id.startsWith("local_");
+              const localDocData = doc as LocalDocData;
+              const syncStatus = localDocData.syncStatus || "synced";
+              const isLocalOnly = localDocData.isLocalOnly || doc._id.startsWith("local_");
 
               let badgeText = "Synced";
               let badgeClass = "text-emerald-400 bg-emerald-500/10 border-emerald-500/20";

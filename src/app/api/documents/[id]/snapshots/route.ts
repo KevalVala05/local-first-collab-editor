@@ -75,7 +75,7 @@ export const GET = withErrorHandler(
         {
           decompressedContent = zlib.gunzipSync(Buffer.from(snap.content, "base64")).toString("utf-8");
         }
-        catch (err)
+        catch
         {
           decompressedContent = snap.content;
         }
@@ -121,7 +121,7 @@ export const POST = withErrorHandler(
     {
       body = await req.json();
     }
-    catch (err)
+    catch
     {
       // Fallback
     }
