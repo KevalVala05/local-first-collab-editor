@@ -624,14 +624,20 @@ export default function DashboardClient({ session }: DashboardClientProps)
                 </div>
 
                 {/* Other collaborators */}
-                {activeModal.doc.collaborators?.map((collab) =>
-                {
-                  const uName = collab.userId?.name || "Collaborator";
-                  const uEmail = collab.userId?.email || "";
-                  const initials = uName.slice(0, 2).toUpperCase();
+                {activeModal.doc.collaborators
+                  ?.filter((collab) => {
+                    const collabId = collab.userId?._id?.toString() || collab.userId?.toString();
+                    const ownerId = activeModal.doc.ownerId?._id?.toString() || activeModal.doc.ownerId?.toString();
+                    return collabId !== ownerId;
+                  })
+                  ?.map((collab) =>
+                  {
+                    const uName = collab.userId?.name || "Collaborator";
+                    const uEmail = collab.userId?.email || "";
+                    const initials = uName.slice(0, 2).toUpperCase();
 
-                  return (
-                    <div key={collab.userId?._id} className="flex items-center justify-between bg-zinc-950/20 border border-zinc-850 rounded-xl p-3.5">
+                    return (
+                      <div key={collab.userId?._id} className="flex items-center justify-between bg-zinc-950/20 border border-zinc-850 rounded-xl p-3.5">
                       <div className="flex items-center gap-3">
                         <div className="w-8 h-8 rounded-full bg-zinc-850 flex items-center justify-center font-bold text-xs text-zinc-400">
                           {initials}
