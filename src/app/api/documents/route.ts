@@ -96,12 +96,7 @@ export const POST = withErrorHandler(async (req: Request) =>
     content: "",
     ownerId: session.user.id,
     currentVersion: 0,
-    collaborators: [
-      {
-        userId: session.user.id,
-        role: DocumentRole.OWNER,
-      },
-    ],
+    collaborators: [],
   });
 
   return sendSuccessResponse(doc, null, SUCCESS_MESSAGES.DOCUMENT_CREATE_SUCCESS, StatusCodes.CREATED);

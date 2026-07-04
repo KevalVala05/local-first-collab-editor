@@ -50,14 +50,14 @@ export default async function DocumentPage({ params }: PageProps)
   const userId = session.user.id;
   const isOwner = doc.ownerId._id.toString() === userId;
 
-  const collaborators = (doc.collaborators || []) as Array<{
+  const collaborators = ((doc.collaborators || []) as Array<{
     userId?: {
       _id: { toString(): string };
       name?: string | null;
       email?: string | null;
     } | null;
     role: DocumentRole;
-  }>;
+  }>).filter(c => c.userId?._id?.toString() !== doc.ownerId?._id?.toString());
 
   const isCollaborator = collaborators.some(
     (c) => c.userId?._id?.toString() === userId
