@@ -47,8 +47,6 @@ export default function UserMenu({ user }: Props)
     <div
       ref={dropdownRef}
       className="relative"
-      onMouseEnter={() => setIsOpen(true)}
-      onMouseLeave={() => setIsOpen(false)}
     >
       {/* Trigger button */}
       <button
