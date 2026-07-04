@@ -35,6 +35,6 @@ jobs:
       - name: Verify production build compilation
         run: npm run build
         env:
-          MONGODB_URI: "mongodb://localhost:27017/dummy"
-          NEXTAUTH_SECRET: "dummy_secret_for_ci_build_verification_only"
-          NEXTAUTH_URL: "http://localhost:3000"
+          MONGODB_URI: ${{ secrets.MONGODB_URI }}
+          NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET }}
+          NEXTAUTH_URL: ${{ secrets.NEXTAUTH_URL }}
