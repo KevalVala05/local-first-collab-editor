@@ -552,9 +552,10 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
       {/* ── Toolbar ── */}
       {!isReadOnly && (
         <div className="flex flex-wrap items-center gap-1 border-b border-zinc-800/60 pb-3 mb-4">
-          {toolbar.map((btn, idx) =>
-            btn.label === "|" ? (
-              <span key={idx} className="text-zinc-700 select-none mx-0.5">|</span>
+          {toolbar.map((btn, idx) => {
+            btn.active();
+            return btn.label === "|" ? (
+              <span key={idx} onClick={btn.action} title={btn.title} className="text-zinc-700 select-none mx-0.5">|</span>
             ) : (
               <button
                 key={btn.title}
@@ -568,8 +569,8 @@ const TiptapEditor = forwardRef<TiptapEditorRef, TiptapEditorProps>(
               >
                 {btn.label}
               </button>
-            )
-          )}
+            );
+          })}
 
           {/* Save controls (right side) */}
           <div className="ml-auto flex items-center gap-3">
